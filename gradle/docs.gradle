@@ -1,0 +1,76 @@
+configurations {
+	asciidoctorExt
+}
+
+dependencies {
+	asciidoctorExt("io.spring.asciidoctor:spring-asciidoctor-extensions-block-switch:0.4.3.RELEASE")
+}
+
+repositories {
+  mavenCentral()
+	maven {
+		url "https://repo.spring.io/release"
+		mavenContent {
+			includeGroup "io.spring.asciidoctor"
+		}
+	}
+}
+
+task downloadResources(type: Download) {
+	def version = "0.2.2.RELEASE"
+	src "https://repo.spring.io/release/io/spring/docresources/" +
+			"spring-doc-resources/$version/spring-doc-resources-${version}.zip"
+	dest project.file("$buildDir/docs/spring-doc-resources.zip")
+	onlyIfModified true
+	useETag "all"
+}
+
+task extractDocResources(type: Copy, dependsOn: downloadResources) {
+	from project.zipTree(downloadResources.dest);
+	into "$buildDir/docs/spring-docs-resources/"
+}
+
+asciidoctorj {
+	fatalWarnings ".*"
+}
+
+/**
+ * Produce the Spring Framework Reference documentation
+ * from "src/docs/asciidoc" into  "build/asciidoc/html5"
+ */
+asciidoctor {
+	baseDirFollowsSourceDir()
+	configurations 'asciidoctorExt'
+	sources {
+		include '*.adoc'
+	}
+	outputDir "$buildDir/docs/ref-docs/"
+	resources {
+		from(sourceDir) {
+			include 'images/*.png', 'css/**', 'js/**'
+		}
+		from extractDocResources
+	}
+	logDocuments = true
+	outputOptions {
+		backends = ["html5"]
+	}
+	options doctype: 'book', eruby: 'erubis'
+	attributes([
+			icons: 'font',
+			idprefix: '',
+			idseparator: '-',
+			docinfo: 'shared',
+			revnumber: project.version,
+			sectanchors: '',
+			sectnums: '',
+			'source-highlighter': 'highlight.js',
+			highlightjsdir: 'js/highlight',
+			'highlightjs-theme': 'googlecode',
+			stylesdir: 'css/',
+			stylesheet: 'stylesheet.css',
+			'spring-version': project.version
+	])
+}
+
+asciidoctor.dependsOn extractDocResources
